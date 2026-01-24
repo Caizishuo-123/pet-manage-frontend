@@ -22,6 +22,13 @@
           </el-icon>
           <template #title>用户管理</template>
         </el-menu-item>
+
+        <el-menu-item index="/pet">
+          <el-icon>
+            <Star />
+          </el-icon>
+          <template #title>宠物管理</template>
+        </el-menu-item>
       </el-menu>
     </el-aside>
 
@@ -73,7 +80,7 @@
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { Odometer, Fold, Expand, ArrowDown, SwitchButton, User } from '@element-plus/icons-vue'
+import { Odometer, Fold, Expand, ArrowDown, SwitchButton, User, Star } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()

@@ -10,8 +10,10 @@
 
 import * as authApi from './auth'
 import * as userApi from './user'
+import * as petApi from './pet'
 
 export {
   authApi,
-  userApi
+  userApi,
+  petApi
 }
