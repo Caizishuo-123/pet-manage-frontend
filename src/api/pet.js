@@ -19,3 +19,40 @@ import request from '@/utils/request'
 export function getPetPage(params) {
   return request.get('/admin/pet/page', { params })
 }
+
+/**
+ * 新增宠物
+ * @param {Object} data - 宠物信息
+ * @returns {Promise}
+ */
+export function addPet(data) {
+  return request.post('/admin/pet/add', data)
+}
+
+/**
+ * 修改宠物
+ * @param {Object} data - 宠物信息
+ * @returns {Promise}
+ */
+export function updatePet(data) {
+  return request.put('/admin/pet/update', data)
+}
+
+/**
+ * 删除宠物
+ * @param {number} id - 宠物ID
+ * @returns {Promise}
+ */
+export function deletePet(id) {
+  return request.delete(`/admin/pet/delete/${id}`)
+}
+
+/**
+ * 批量删除宠物
+ * @param {Array} ids - 宠物ID数组
+ * @returns {Promise}
+ */
+export function batchDeletePet(ids) {
+  return request.delete('/admin/pet/delete/batch', { data: ids })
+}
+

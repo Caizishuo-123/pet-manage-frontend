@@ -5,11 +5,18 @@
       <template #header>
         <div class="card-header">
           <span>宠物列表</span>
-          <el-button type="primary" @click="handleAdd">
-            <el-icon>
-              <Plus />
-            </el-icon> 新增宠物
-          </el-button>
+          <div>
+            <el-button type="danger" @click="handleBatchDelete" :disabled="selectedIds.length === 0">
+              <el-icon>
+                <Delete />
+              </el-icon> 批量删除
+            </el-button>
+            <el-button type="primary" @click="handleAdd">
+              <el-icon>
+                <Plus />
+              </el-icon> 新增宠物
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -50,7 +57,9 @@
         </el-form-item>
       </el-form>
 
-      <el-table :data="tableData" style="width: 100%" v-loading="loading" border>
+      <el-table :data="tableData" style="width: 100%" v-loading="loading" border
+        @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="55" align="center" />
         <el-table-column prop="id" label="ID" width="80" align="center" />
 
         <el-table-column prop="name" label="名称" min-width="120" />
@@ -127,6 +136,18 @@
     <!-- 新增/编辑弹窗 -->
     <el-dialog :title="dialogTitle" v-model="dialogVisible" width="600px" @close="resetForm">
       <el-form ref="petFormRef" :model="petForm" :rules="petRules" label-width="100px">
+
+        <el-form-item label="宠物图片" prop="image">
+          <el-upload class="avatar-uploader" action="/common/upload?type=pet" :show-file-list="false"
+            :on-success="handleAvatarSuccess" :before-upload="beforeAvatarUpload" @drop.prevent="handleDrop"
+            @dragover.prevent>
+            <img v-if="petForm.image" :src="petForm.image" class="avatar" />
+            <el-icon v-else class="avatar-uploader-icon">
+              <Plus />
+            </el-icon>
+          </el-upload>
+        </el-form-item>
+
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="名称" prop="name">
@@ -205,9 +226,9 @@
       <el-descriptions :column="1" border>
         <el-descriptions-item label="名称">{{ viewPet.name }}</el-descriptions-item>
         <el-descriptions-item label="健康状态">
-          <el-tag v-for="tag in getViewPetHealthStatusTags(viewPet.healthStatus)" :key="tag" class="mr-2"
-            style="margin-right: 5px;">
-            {{ tag }}
+          <el-tag v-for="item in getViewPetHealthStatusTags(viewPet.healthStatus)" :key="item.value" class="mr-2"
+            style="margin-right: 5px;" :type="getHealthTagType(item.value)">
+            {{ item.label }}
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="描述">{{ viewPet.description || '暂无描述' }}</el-descriptions-item>
@@ -235,15 +256,22 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
-import { Search, Refresh, Plus, Edit, Delete, View } from '@element-plus/icons-vue'
+import { ref, reactive, computed, onMounted, watch, onUnmounted } from 'vue'
+import { Search, Refresh, Plus, Edit, Delete, View, Picture as IconPicture } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { petApi } from '@/api'
+import request from '@/utils/request'
 
 const loading = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+
+// 批量删除相关
+const selectedIds = ref([])
+const handleSelectionChange = (selection) => {
+  selectedIds.value = selection.map(item => item.id)
+}
 
 const searchForm = reactive({
   name: '',
@@ -286,6 +314,12 @@ const healthStatusMap = {
   64: '特殊照顾'
 }
 
+const getHealthTagType = (val) => {
+  if (val >= 64) return 'danger'   // 大于等于64 -> 红色
+  if (val >= 16) return 'warning'  // 大于等于16 -> 黄色
+  return ''                        // 其他 -> 默认蓝色（如果想变绿可以用 'success'）
+}
+
 const getPetStatusType = (status) => {
   switch (status) {
     case 1: return 'info';
@@ -310,7 +344,7 @@ const getViewPetHealthStatusTags = (status) => {
   for (const [key, value] of Object.entries(healthStatusMap)) {
     const bit = Number(key)
     if ((status & bit) === bit) {
-      tags.push(value)
+      tags.push({ value: bit, label: value })
     }
   }
   return tags
@@ -324,6 +358,7 @@ const petFormRef = ref(null)
 const petForm = reactive({
   id: undefined,
   name: '',
+  image: '',
   type: 1,
   breed: '',
   age: 0,
@@ -337,6 +372,85 @@ const petForm = reactive({
 
 // 用于处理 checkbox group 的数组
 const selectedHealthStatus = ref([])
+
+// 手动上传逻辑
+const customUpload = async (file) => {
+  if (!beforeAvatarUpload(file)) return
+
+  const formData = new FormData()
+  formData.append('file', file)
+
+  try {
+    const res = await request.post('/common/upload?type=pet', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    handleAvatarSuccess(res)
+  } catch (error) {
+    ElMessage.error('上传失败')
+  }
+}
+
+// 粘贴处理
+const handlePaste = (e) => {
+  if (!dialogVisible.value) return
+  const items = e.clipboardData && e.clipboardData.items
+  if (items) {
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const file = items[i].getAsFile()
+        customUpload(file)
+        break // 只上传第一张
+      }
+    }
+  }
+}
+
+// 拖拽处理
+const handleDrop = (e) => {
+  const files = e.dataTransfer.files
+  if (files && files.length > 0) {
+    const file = files[0]
+    if (file.type.indexOf('image') !== -1) {
+      customUpload(file)
+    }
+  }
+}
+
+// 监听 Dialog 打开状态，添加/移除粘贴事件
+watch(dialogVisible, (val) => {
+  if (val) {
+    window.addEventListener('paste', handlePaste)
+  } else {
+    window.removeEventListener('paste', handlePaste)
+  }
+})
+
+onUnmounted(() => {
+  window.removeEventListener('paste', handlePaste)
+})
+
+const handleAvatarSuccess = (response, uploadFile) => {
+  // 适配后端返回结构 Result<String>
+  if (response.code === 200) {
+    petForm.image = response.data
+    ElMessage.success('上传成功')
+  } else {
+    ElMessage.error('上传失败: ' + (response.msg || '未知错误'))
+  }
+}
+
+const beforeAvatarUpload = (rawFile) => {
+  const isValidFormat = rawFile.type === 'image/jpeg' || rawFile.type === 'image/png' || rawFile.type === 'image/webp'
+  const isLt5M = rawFile.size / 1024 / 1024 < 5
+
+  if (!isValidFormat) {
+    ElMessage.error('上传图片只能是 JPG/PNG/WEBP 格式!')
+  }
+  if (!isLt5M) {
+    ElMessage.error('上传图片大小不能超过 5MB!')
+  }
+  return isValidFormat && isLt5M
+}
 
 const petRules = {
   name: [{ required: true, message: '请输入宠物名称', trigger: 'blur' }],
@@ -399,22 +513,70 @@ const handleDelete = (row) => {
     cancelButtonText: '取消',
     type: 'warning'
   }).then(async () => {
-    ElMessage.info('功能开发中...')
-    // TODO: 调用删除接口
+    try {
+      const res = await petApi.deletePet(row.id)
+      if (res.code === 200) {
+        ElMessage.success('删除成功')
+        loadData()
+      } else {
+        ElMessage.error(res.msg || '删除失败')
+      }
+    } catch (error) {
+      console.error(error)
+      ElMessage.error('删除失败')
+    }
+  })
+}
+
+const handleBatchDelete = () => {
+  if (selectedIds.value.length === 0) return
+
+  ElMessageBox.confirm(`确认删除选中的 ${selectedIds.value.length} 个宠物吗?`, '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    try {
+      const res = await petApi.batchDeletePet(selectedIds.value)
+      if (res.code === 200) {
+        ElMessage.success('批量删除成功')
+        selectedIds.value = [] // 清空选中
+        loadData()
+      } else {
+        ElMessage.error(res.msg || '批量删除失败')
+      }
+    } catch (error) {
+      console.error(error)
+      ElMessage.error('批量删除失败')
+    }
   })
 }
 
 const handleSubmit = async () => {
   if (!petFormRef.value) return
-  await petFormRef.value.validate((valid) => {
+  await petFormRef.value.validate(async (valid) => {
     if (valid) {
       // 计算健康状态总值
       petForm.healthStatus = selectedHealthStatus.value.reduce((acc, cur) => acc | cur, 0)
 
-      console.log('Submit:', petForm)
-      ElMessage.success('操作成功 (演示)')
-      dialogVisible.value = false
-      loadData()
+      try {
+        let res
+        if (petForm.id) {
+          res = await petApi.updatePet(petForm)
+        } else {
+          res = await petApi.addPet(petForm)
+        }
+
+        if (res.code === 200) {
+          ElMessage.success(petForm.id ? '修改成功' : '新增成功')
+          dialogVisible.value = false
+          loadData()
+        } else {
+          ElMessage.error(res.msg || '操作失败')
+        }
+      } catch (error) {
+        console.error(error)
+      }
     }
   })
 }
@@ -422,6 +584,7 @@ const handleSubmit = async () => {
 const resetForm = () => {
   petForm.id = undefined
   petForm.name = ''
+  petForm.image = ''
   petForm.type = 1
   petForm.breed = ''
   petForm.age = 0
@@ -501,5 +664,32 @@ onMounted(() => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+
+.avatar-uploader .el-upload {
+  border: 1px dashed var(--el-border-color);
+  border-radius: 6px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: var(--el-transition-duration-fast);
+}
+
+.avatar-uploader .el-upload:hover {
+  border-color: var(--el-color-primary);
+}
+
+.avatar-uploader-icon {
+  font-size: 28px;
+  color: #8c939d;
+  width: 178px;
+  height: 178px;
+  text-align: center;
+}
+
+.avatar {
+  width: 178px;
+  height: 178px;
+  display: block;
 }
 </style>
