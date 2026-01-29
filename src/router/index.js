@@ -30,6 +30,36 @@ const routes = [
         name: 'Pet',
         component: () => import('@/views/Pet.vue'),
         meta: { title: '宠物管理' }
+      },
+      {
+        path: 'pet-service',
+        name: 'PetService',
+        component: () => import('@/views/PetService.vue'),
+        meta: { title: '服务管理' }
+      },
+      {
+        path: 'appointment',
+        name: 'Appointment',
+        component: () => import('@/views/Appointment.vue'),
+        meta: { title: '预约管理' }
+      },
+      {
+        path: 'orders',
+        name: 'Orders',
+        component: () => import('@/views/Orders.vue'),
+        meta: { title: '订单管理' }
+      },
+      {
+        path: 'adoption',
+        name: 'Adoption',
+        component: () => import('@/views/Adoption.vue'),
+        meta: { title: '领养管理' }
+      },
+      {
+        path: 'community',
+        name: 'Community',
+        component: () => import('@/views/Community.vue'),
+        meta: { title: '社区管理' }
       }
     ]
   }

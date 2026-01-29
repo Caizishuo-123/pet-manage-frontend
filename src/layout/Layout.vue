@@ -29,6 +29,42 @@
           </el-icon>
           <template #title>宠物管理</template>
         </el-menu-item>
+
+        <el-menu-item index="/adoption">
+          <el-icon>
+            <HomeFilled />
+          </el-icon>
+          <template #title>领养管理</template>
+        </el-menu-item>
+
+        <el-menu-item index="/pet-service">
+          <el-icon>
+            <Goods />
+          </el-icon>
+          <template #title>服务管理</template>
+        </el-menu-item>
+
+        <el-menu-item index="/appointment">
+          <el-icon>
+            <Calendar />
+          </el-icon>
+          <template #title>预约管理</template>
+        </el-menu-item>
+
+        <el-menu-item index="/orders">
+          <el-icon>
+            <Document />
+          </el-icon>
+          <template #title>订单管理</template>
+        </el-menu-item>
+
+        <el-menu-item index="/community">
+          <el-icon>
+            <ChatDotSquare />
+          </el-icon>
+          <template #title>社区管理</template>
+        </el-menu-item>
+
       </el-menu>
     </el-aside>
 
@@ -80,7 +116,7 @@
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { Odometer, Fold, Expand, ArrowDown, SwitchButton, User, Star } from '@element-plus/icons-vue'
+import { Odometer, Fold, Expand, ArrowDown, SwitchButton, User, Star, Goods, Calendar, Document, HomeFilled, ChatDotSquare } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()

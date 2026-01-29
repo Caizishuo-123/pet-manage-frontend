@@ -8,15 +8,15 @@
         </div>
       </template>
 
-      <el-form :inline="true" :model="searchForm" class="search-form" >
+      <el-form :inline="true" :model="searchForm" class="search-form">
         <el-form-item label="ID">
-          <el-input v-model="searchForm.id" placeholder="请输入用户ID" clearable style="width: 120px"/>
+          <el-input v-model="searchForm.id" placeholder="请输入用户ID" clearable style="width: 120px" />
         </el-form-item>
         <el-form-item label="用户名">
-          <el-input v-model="searchForm.username" placeholder="请输入用户名" clearable style="width: 120px"/>
+          <el-input v-model="searchForm.username" placeholder="请输入用户名" clearable style="width: 120px" />
         </el-form-item>
         <el-form-item label="手机号">
-          <el-input v-model="searchForm.phone" placeholder="请输入手机号" clearable style="width: 150px"/>
+          <el-input v-model="searchForm.phone" placeholder="请输入手机号" clearable style="width: 150px" />
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="searchForm.status" placeholder="请选择状态" clearable style="width: 120px">
@@ -69,19 +69,19 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="createTime" label="注册时间" width="180" />
+        <el-table-column prop="createTime" label="创建时间" width="180" />
+
+        <el-table-column prop="updateTime" label="更新时间" width="180" />
 
         <el-table-column label="操作" width="200" align="center" fixed="right">
           <template #default="scope">
-            <el-button type="primary" link size="small" @click="handleEdit(scope.row)"
-              :disabled="userStore.userInfo?.username === scope.row.username || userStore.userInfo?.phone === scope.row.phone">
+            <el-button type="primary" link size="small" @click="handleEdit(scope.row)" :disabled="!canEdit(scope.row)">
               <el-icon>
                 <Edit />
               </el-icon> 编辑
             </el-button>
             <el-button :type="scope.row.status === 1 ? 'danger' : 'success'" link size="small"
-              @click="handleDelete(scope.row)"
-              :disabled="userStore.userInfo?.username === scope.row.username || userStore.userInfo?.phone === scope.row.phone">
+              @click="handleDelete(scope.row)" :disabled="!canToggleStatus(scope.row)">
               <el-icon>
                 <component :is="scope.row.status === 1 ? 'Delete' : 'Check'" />
               </el-icon> {{ scope.row.status === 1 ? '禁用' : '启用' }}
@@ -109,7 +109,12 @@
           <el-select v-model="userForm.role" placeholder="请选择角色" style="width: 100%">
             <el-option label="普通用户" :value="1" />
             <el-option label="管理员" :value="2" />
+            <el-option label="超级管理员" :value="3" />
           </el-select>
+        </el-form-item>
+
+        <el-form-item label="默认地址">
+          <el-input v-model="userForm.address" placeholder="请输入默认收货地址" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -132,6 +137,40 @@ import { useUserStore } from '@/stores/user'
 const userStore = useUserStore()
 const loading = ref(false)
 const currentPage = ref(1)
+
+// 获取当前登录用户的角色
+const currentUserRole = computed(() => userStore.userInfo?.role || 1)
+
+/**
+ * 判断是否可以编辑用户
+ * 规则：
+ * 1. 不能编辑自己
+ * 2. 管理员不能编辑超级管理员
+ */
+const canEdit = (row) => {
+  // 不能编辑自己
+  if (userStore.userInfo?.username === row.username) return false
+  // 管理员(role=2)不能编辑超级管理员(role=3)
+  if (currentUserRole.value === 2 && row.role === 3) return false
+  return true
+}
+
+/**
+ * 判断是否可以禁用/启用用户
+ * 规则：
+ * 1. 不能操作自己
+ * 2. 管理员不能操作超级管理员
+ * 3. 只有普通用户才能被禁用
+ */
+const canToggleStatus = (row) => {
+  // 不能操作自己
+  if (userStore.userInfo?.username === row.username) return false
+  // 管理员不能操作超级管理员
+  if (currentUserRole.value === 2 && row.role === 3) return false
+  // 只有普通用户(role=1)才能被禁用/启用
+  if (row.role !== 1) return false
+  return true
+}
 const pageSize = ref(10)
 const total = ref(100)
 
@@ -148,7 +187,8 @@ const dialogVisible = ref(false)
 const userForm = reactive({
   id: undefined,
   username: '',
-  role: undefined
+  role: undefined,
+  address: ''
 })
 
 const dialogTitle = '修改角色'
@@ -202,6 +242,7 @@ const handleEdit = (row) => {
   userForm.id = row.id
   userForm.username = row.username
   userForm.role = row.role
+  userForm.address = row.address || ''
   dialogVisible.value = true
 }
 
@@ -235,9 +276,13 @@ const handleSubmit = async () => {
   }
 
   try {
-    const res = await userApi.toggleUserRole(userForm.id, userForm.role)
+    const res = await userApi.updateUserInfo({
+      id: userForm.id,
+      role: userForm.role,
+      address: userForm.address || null
+    })
     if (res.code === 200) {
-      ElMessage.success('角色修改成功')
+      ElMessage.success('更新成功')
       dialogVisible.value = false
       loadData()
     } else {
@@ -252,6 +297,7 @@ const handleSubmit = async () => {
 const resetForm = () => {
   userForm.id = undefined
   userForm.role = undefined
+  userForm.address = ''
 }
 
 const handleSizeChange = (val) => {

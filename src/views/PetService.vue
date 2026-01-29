@@ -1,10 +1,10 @@
 <template>
-  <div class="pets-container">
+  <div class="service-container">
     <!-- 数据列表 -->
     <el-card class="table-card" shadow="never">
       <template #header>
         <div class="card-header">
-          <span>宠物列表</span>
+          <span>服务列表</span>
           <div>
             <el-button type="danger" @click="handleBatchDelete" :disabled="selectedIds.length === 0">
               <el-icon>
@@ -14,7 +14,7 @@
             <el-button type="primary" @click="handleAdd">
               <el-icon>
                 <Plus />
-              </el-icon> 新增宠物
+              </el-icon> 新增服务
             </el-button>
           </div>
         </div>
@@ -22,25 +22,17 @@
 
       <el-form :inline="true" :model="searchForm" class="search-form">
         <el-form-item label="名称">
-          <el-input v-model="searchForm.name" placeholder="请输入宠物名称" clearable style="width: 150px" />
+          <el-input v-model="searchForm.name" placeholder="请输入服务名称" clearable style="width: 150px" />
         </el-form-item>
         <el-form-item label="类型">
           <el-select v-model="searchForm.type" placeholder="请选择类型" clearable style="width: 120px">
-            <el-option label="猫" :value="1" />
-            <el-option label="狗" :value="2" />
+            <el-option v-for="(label, value) in serviceTypeMap" :key="value" :label="label" :value="Number(value)" />
           </el-select>
-        </el-form-item>
-        <el-form-item label="品种">
-          <el-input v-model="searchForm.breed" placeholder="请输入品种" clearable style="width: 150px" />
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="searchForm.status" placeholder="请选择状态" clearable style="width: 120px">
-            <el-option v-for="(label, value) in petStatusMap" :key="value" :label="label" :value="Number(value)" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="来源">
-          <el-select v-model="searchForm.source" placeholder="请选择来源" clearable style="width: 120px">
-            <el-option v-for="(label, value) in petSourceMap" :key="value" :label="label" :value="Number(value)" />
+            <el-option label="启用" :value="1" />
+            <el-option label="禁用" :value="0" />
           </el-select>
         </el-form-item>
         <el-form-item>
@@ -62,43 +54,49 @@
         <el-table-column type="selection" width="55" align="center" />
         <el-table-column prop="id" label="ID" width="80" align="center" />
 
-        <el-table-column prop="name" label="名称" min-width="120" />
-
-        <el-table-column prop="type" label="类型" width="80" align="center">
+        <el-table-column label="封面图" width="100" align="center">
           <template #default="scope">
-            <el-tag :type="scope.row.type === 1 ? 'warning' : 'success'">{{ petTypeMap[scope.row.type] }}</el-tag>
+            <el-image v-if="scope.row.imageUrl" :src="getCosUrl(scope.row.imageUrl)"
+              style="width: 60px; height: 60px; border-radius: 4px;" fit="cover"
+              :preview-src-list="[getCosUrl(scope.row.imageUrl)]">
+              <template #error>
+                <div class="image-slot">
+                  <el-icon>
+                    <Picture />
+                  </el-icon>
+                </div>
+              </template>
+            </el-image>
+            <span v-else class="no-image">暂无</span>
           </template>
         </el-table-column>
 
-        <el-table-column prop="breed" label="品种" width="120" />
+        <el-table-column prop="name" label="服务名称" min-width="120" />
 
-        <el-table-column prop="age" label="年龄(月)" width="100" align="center" />
-
-        <el-table-column prop="gender" label="性别" width="80" align="center">
+        <el-table-column prop="type" label="类型" width="100" align="center">
           <template #default="scope">
-            <el-tag :type="scope.row.gender === 1 ? '' : 'danger'" effect="plain">
-              {{ petGenderMap[scope.row.gender] }}
-            </el-tag>
+            <el-tag :type="getServiceTypeTag(scope.row.type)">{{ serviceTypeMap[scope.row.type] }}</el-tag>
           </template>
         </el-table-column>
+
+        <el-table-column prop="price" label="价格(元)" width="100" align="center">
+          <template #default="scope">
+            <span class="price">¥{{ scope.row.price }}</span>
+          </template>
+        </el-table-column>
+
+        <el-table-column prop="duration" label="时长(分钟)" width="100" align="center">
+          <template #default="scope">
+            {{ scope.row.duration || '-' }}
+          </template>
+        </el-table-column>
+
+        <el-table-column prop="sort" label="排序" width="80" align="center" />
 
         <el-table-column prop="status" label="状态" width="100" align="center">
           <template #default="scope">
-            <el-tag :type="getPetStatusType(scope.row.status)">
-              {{ petStatusMap[scope.row.status] }}
-            </el-tag>
-          </template>
-        </el-table-column>
-
-        <el-table-column prop="source" label="来源" width="100" align="center">
-          <template #default="scope">
-            {{ petSourceMap[scope.row.source] }}
-          </template>
-        </el-table-column>
-
-        <el-table-column prop="ownerId" label="所属用户ID" width="120" align="center">
-          <template #default="scope">
-            {{ scope.row.ownerId || '-' }}
+            <el-switch v-model="scope.row.status" :active-value="1" :inactive-value="0"
+              @change="handleStatusChange(scope.row)" />
           </template>
         </el-table-column>
 
@@ -137,13 +135,13 @@
 
     <!-- 新增/编辑弹窗 -->
     <el-dialog :title="dialogTitle" v-model="dialogVisible" width="600px" @close="resetForm">
-      <el-form ref="petFormRef" :model="petForm" :rules="petRules" label-width="100px">
+      <el-form ref="serviceFormRef" :model="serviceForm" :rules="serviceRules" label-width="100px">
 
-        <el-form-item label="宠物图片" prop="image">
-          <el-upload class="avatar-uploader" action="/cos/upload?type=pet" :show-file-list="false"
+        <el-form-item label="服务封面" prop="imageUrl">
+          <el-upload class="avatar-uploader" action="/cos/upload?type=service" :show-file-list="false"
             :on-success="handleAvatarSuccess" :before-upload="beforeAvatarUpload" @drop.prevent="handleDrop"
             @dragover.prevent>
-            <img v-if="petForm.image" :src="getCosUrl(petForm.image)" class="avatar" />
+            <img v-if="serviceForm.imageUrl" :src="getCosUrl(serviceForm.imageUrl)" class="avatar" />
             <el-icon v-else class="avatar-uploader-icon">
               <Plus />
             </el-icon>
@@ -152,66 +150,51 @@
 
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="名称" prop="name">
-              <el-input v-model="petForm.name" placeholder="请输入宠物名称" />
+            <el-form-item label="服务名称" prop="name">
+              <el-input v-model="serviceForm.name" placeholder="请输入服务名称" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="品种" prop="breed">
-              <el-input v-model="petForm.breed" placeholder="请输入品种" />
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="类型" prop="type">
-              <el-radio-group v-model="petForm.type">
-                <el-radio :label="1">猫</el-radio>
-                <el-radio :label="2">狗</el-radio>
-              </el-radio-group>
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="性别" prop="gender">
-              <el-radio-group v-model="petForm.gender">
-                <el-radio :label="1">公</el-radio>
-                <el-radio :label="2">母</el-radio>
-              </el-radio-group>
-            </el-form-item>
-          </el-col>
-        </el-row>
-
-        <el-row :gutter="20">
-          <el-col :span="12">
-            <el-form-item label="年龄(月)" prop="age">
-              <el-input-number v-model="petForm.age" :min="0" :max="300" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="12">
-            <el-form-item label="来源" prop="source">
-              <el-select v-model="petForm.source" placeholder="请选择来源" style="width: 100%">
-                <el-option v-for="(label, value) in petSourceMap" :key="value" :label="label" :value="Number(value)" />
+            <el-form-item label="服务类型" prop="type">
+              <el-select v-model="serviceForm.type" placeholder="请选择类型" style="width: 100%">
+                <el-option v-for="(label, value) in serviceTypeMap" :key="value" :label="label"
+                  :value="Number(value)" />
               </el-select>
             </el-form-item>
           </el-col>
         </el-row>
 
-        <el-form-item label="状态" prop="status">
-          <el-select v-model="petForm.status" placeholder="请选择状态" style="width: 100%">
-            <el-option v-for="(label, value) in petStatusMap" :key="value" :label="label" :value="Number(value)" />
-          </el-select>
-        </el-form-item>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="价格(元)" prop="price">
+              <el-input-number v-model="serviceForm.price" :min="0" :precision="2" :step="10" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="时长(分钟)" prop="duration">
+              <el-input-number v-model="serviceForm.duration" :min="0" :max="1440" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+        </el-row>
 
-        <el-form-item label="健康状态" prop="healthStatus">
-          <el-checkbox-group v-model="selectedHealthStatus">
-            <el-checkbox v-for="(label, value) in healthStatusMap" :key="value" :label="Number(value)">{{ label
-            }}</el-checkbox>
-          </el-checkbox-group>
-        </el-form-item>
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="排序权重" prop="sort">
+              <el-input-number v-model="serviceForm.sort" :min="0" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="状态" prop="status">
+              <el-radio-group v-model="serviceForm.status">
+                <el-radio :value="1">启用</el-radio>
+                <el-radio :value="0">禁用</el-radio>
+              </el-radio-group>
+            </el-form-item>
+          </el-col>
+        </el-row>
 
-        <el-form-item label="描述" prop="description">
-          <el-input v-model="petForm.description" type="textarea" :rows="3" placeholder="请输入描述信息" />
+        <el-form-item label="服务描述" prop="description">
+          <el-input v-model="serviceForm.description" type="textarea" :rows="3" placeholder="请输入服务描述" />
         </el-form-item>
 
       </el-form>
@@ -224,23 +207,31 @@
     </el-dialog>
 
     <!-- 查看详情弹窗 -->
-    <el-dialog title="宠物详情" v-model="viewDialogVisible" width="600px" destroy-on-close @close="viewPet = {}">
-      <el-descriptions :column="1" border>
-        <el-descriptions-item label="名称">{{ viewPet.name }}</el-descriptions-item>
-        <el-descriptions-item label="健康状态">
-          <el-tag v-for="item in getViewPetHealthStatusTags(viewPet.healthStatus)" :key="item.value" class="mr-2"
-            style="margin-right: 5px;" :type="getHealthTagType(item.value)">
-            {{ item.label }}
+    <el-dialog title="服务详情" v-model="viewDialogVisible" width="600px" destroy-on-close @close="viewService = {}">
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="服务名称">{{ viewService.name }}</el-descriptions-item>
+        <el-descriptions-item label="服务类型">
+          <el-tag :type="getServiceTypeTag(viewService.type)">{{ serviceTypeMap[viewService.type] }}</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="价格">¥{{ viewService.price }}</el-descriptions-item>
+        <el-descriptions-item label="时长">{{ viewService.duration ? viewService.duration + ' 分钟' : '-'
+        }}</el-descriptions-item>
+        <el-descriptions-item label="排序权重">{{ viewService.sort }}</el-descriptions-item>
+        <el-descriptions-item label="状态">
+          <el-tag :type="viewService.status === 1 ? 'success' : 'danger'">
+            {{ viewService.status === 1 ? '启用' : '禁用' }}
           </el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="描述">{{ viewPet.description || '暂无描述' }}</el-descriptions-item>
-        <el-descriptions-item label="图片">
-          <el-image v-if="viewPet.image" :src="getCosUrl(viewPet.image)" style="width: 200px; height: 200px" fit="cover"
-            :preview-src-list="[getCosUrl(viewPet.image)]">
+        <el-descriptions-item label="服务描述" :span="2">{{ viewService.description || '暂无描述' }}</el-descriptions-item>
+        <el-descriptions-item label="创建时间">{{ viewService.createTime }}</el-descriptions-item>
+        <el-descriptions-item label="更新时间">{{ viewService.updateTime }}</el-descriptions-item>
+        <el-descriptions-item label="封面图" :span="2">
+          <el-image v-if="viewService.imageUrl" :src="getCosUrl(viewService.imageUrl)"
+            style="width: 200px; height: 200px" fit="cover" :preview-src-list="[getCosUrl(viewService.imageUrl)]">
             <template #error>
               <div class="image-slot">
                 <el-icon>
-                  <IconPicture />
+                  <Picture />
                 </el-icon>
               </div>
             </template>
@@ -258,10 +249,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch, onUnmounted } from 'vue'
-import { Search, Refresh, Plus, Edit, Delete, View, Picture as IconPicture } from '@element-plus/icons-vue'
+import { ref, reactive, onMounted, watch, onUnmounted } from 'vue'
+import { Search, Refresh, Plus, Edit, Delete, View, Picture } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { petApi } from '@/api'
+import { petServiceApi } from '@/api'
 import request, { getCosUrl } from '@/utils/request'
 
 const loading = ref(false)
@@ -278,102 +269,56 @@ const handleSelectionChange = (selection) => {
 const searchForm = reactive({
   name: '',
   type: undefined,
-  breed: '',
-  status: undefined,
-  source: undefined,
-  gender: undefined
+  status: undefined
 })
 
-// 字典映射
-const petTypeMap = {
-  1: '猫',
-  2: '狗'
+// 服务类型映射
+const serviceTypeMap = {
+  1: '美容',
+  2: '洗护',
+  3: '医疗',
+  4: '寄养',
+  5: '训练',
+  6: '接送'
 }
 
-const petGenderMap = {
-  1: '公',
-  2: '母'
-}
-
-const petStatusMap = {
-  1: '用户拥有',
-  2: '可领养',
-  3: '已领养'
-}
-
-const petSourceMap = {
-  1: '用户拥有',
-  2: '平台发布'
-}
-
-const healthStatusMap = {
-  1: '疫苗',
-  2: '驱虫',
-  4: '绝育',
-  8: '健康',
-  16: '慢性病',
-  32: '观察中',
-  64: '特殊照顾'
-}
-
-const getHealthTagType = (val) => {
-  if (val >= 64) return 'danger'   // 大于等于64 -> 红色
-  if (val >= 16) return 'warning'  // 大于等于16 -> 黄色
-  return ''                        // 其他 -> 默认蓝色（如果想变绿可以用 'success'）
-}
-
-const getPetStatusType = (status) => {
-  switch (status) {
-    case 1: return 'info';
-    case 2: return 'success';
-    case 3: return 'warning';
-    default: return '';
+const getServiceTypeTag = (type) => {
+  const tagTypes = {
+    1: '',        // 美容 - 蓝色
+    2: 'success', // 洗护 - 绿色
+    3: 'danger',  // 医疗 - 红色
+    4: 'warning', // 寄养 - 黄色
+    5: 'info',    // 训练 - 灰色
+    6: ''         // 接送 - 蓝色
   }
+  return tagTypes[type] || ''
 }
 
 // 查看详情相关
 const viewDialogVisible = ref(false)
-const viewPet = ref({})
+const viewService = ref({})
 
 const handleView = (row) => {
-  viewPet.value = { ...row }
+  viewService.value = { ...row }
   viewDialogVisible.value = true
-}
-
-const getViewPetHealthStatusTags = (status) => {
-  const tags = []
-  if (status === undefined || status === null) return tags
-  for (const [key, value] of Object.entries(healthStatusMap)) {
-    const bit = Number(key)
-    if ((status & bit) === bit) {
-      tags.push({ value: bit, label: value })
-    }
-  }
-  return tags
 }
 
 // 弹窗相关
 const dialogVisible = ref(false)
-const dialogTitle = ref('新增宠物')
-const petFormRef = ref(null)
+const dialogTitle = ref('新增服务')
+const serviceFormRef = ref(null)
 
-const petForm = reactive({
+const serviceForm = reactive({
   id: undefined,
   name: '',
-  image: '',
   type: 1,
-  breed: '',
-  age: 0,
-  gender: 1,
-  healthStatus: 0,
+  price: 0,
+  duration: null,
   description: '',
-  source: 2, // 默认平台发布
-  status: 2, // 默认可领养
-  ownerId: null
+  imageUrl: '',
+  sort: 0,
+  status: 1
 })
-
-// 用于处理 checkbox group 的数组
-const selectedHealthStatus = ref([])
 
 // 手动上传逻辑
 const customUpload = async (file) => {
@@ -383,7 +328,7 @@ const customUpload = async (file) => {
   formData.append('file', file)
 
   try {
-    const res = await request.post('/cos/upload?type=pet', formData, {
+    const res = await request.post('/cos/upload?type=service', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     })
     handleAvatarSuccess(res)
@@ -401,7 +346,7 @@ const handlePaste = (e) => {
       if (items[i].type.indexOf('image') !== -1) {
         const file = items[i].getAsFile()
         customUpload(file)
-        break // 只上传第一张
+        break
       }
     }
   }
@@ -418,7 +363,7 @@ const handleDrop = (e) => {
   }
 }
 
-// 监听 Dialog 打开状态，添加/移除粘贴事件
+// 监听 Dialog 打开状态
 watch(dialogVisible, (val) => {
   if (val) {
     window.addEventListener('paste', handlePaste)
@@ -432,9 +377,8 @@ onUnmounted(() => {
 })
 
 const handleAvatarSuccess = (response, uploadFile) => {
-  // 适配后端返回结构 Result<String>
   if (response.code === 200) {
-    petForm.image = response.data
+    serviceForm.imageUrl = response.data
     ElMessage.success('上传成功')
   } else {
     ElMessage.error('上传失败: ' + (response.msg || '未知错误'))
@@ -454,14 +398,13 @@ const beforeAvatarUpload = (rawFile) => {
   return isValidFormat && isLt5M
 }
 
-const petRules = {
-  name: [{ required: true, message: '请输入宠物名称', trigger: 'blur' }],
-  type: [{ required: true, message: '请选择类型', trigger: 'change' }],
-  status: [{ required: true, message: '请选择状态', trigger: 'change' }],
-  source: [{ required: true, message: '请选择来源', trigger: 'change' }]
+const serviceRules = {
+  name: [{ required: true, message: '请输入服务名称', trigger: 'blur' }],
+  type: [{ required: true, message: '请选择服务类型', trigger: 'change' }],
+  price: [{ required: true, message: '请输入价格', trigger: 'blur' }]
 }
 
-// 列表数据 mock
+// 列表数据
 const tableData = ref([])
 
 const handleSearch = () => {
@@ -472,51 +415,38 @@ const handleSearch = () => {
 const resetSearch = () => {
   searchForm.name = ''
   searchForm.type = undefined
-  searchForm.breed = ''
   searchForm.status = undefined
-  searchForm.source = undefined
-  searchForm.gender = undefined
   currentPage.value = 1
   loadData()
 }
 
 const handleAdd = () => {
   resetForm()
-  dialogTitle.value = '新增宠物'
+  dialogTitle.value = '新增服务'
   dialogVisible.value = true
 }
 
 const handleEdit = (row) => {
   resetForm()
-  dialogTitle.value = '编辑宠物'
+  dialogTitle.value = '编辑服务'
 
-  // 赋值
-  Object.keys(petForm).forEach(key => {
+  Object.keys(serviceForm).forEach(key => {
     if (row[key] !== undefined) {
-      petForm[key] = row[key]
+      serviceForm[key] = row[key]
     }
   })
-
-  // 处理健康状态位运算转数组
-  selectedHealthStatus.value = []
-  for (const [key, value] of Object.entries(healthStatusMap)) {
-    const bit = Number(key)
-    if ((row.healthStatus & bit) === bit) {
-      selectedHealthStatus.value.push(bit)
-    }
-  }
 
   dialogVisible.value = true
 }
 
 const handleDelete = (row) => {
-  ElMessageBox.confirm('确认删除该宠物吗?', '提示', {
+  ElMessageBox.confirm('确认删除该服务吗?', '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
   }).then(async () => {
     try {
-      const res = await petApi.deletePet(row.id)
+      const res = await petServiceApi.deleteService(row.id)
       if (res.code === 200) {
         ElMessage.success('删除成功')
         loadData()
@@ -533,16 +463,16 @@ const handleDelete = (row) => {
 const handleBatchDelete = () => {
   if (selectedIds.value.length === 0) return
 
-  ElMessageBox.confirm(`确认删除选中的 ${selectedIds.value.length} 个宠物吗?`, '提示', {
+  ElMessageBox.confirm(`确认删除选中的 ${selectedIds.value.length} 个服务吗?`, '提示', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
   }).then(async () => {
     try {
-      const res = await petApi.batchDeletePet(selectedIds.value)
+      const res = await petServiceApi.batchDeleteService(selectedIds.value)
       if (res.code === 200) {
         ElMessage.success('批量删除成功')
-        selectedIds.value = [] // 清空选中
+        selectedIds.value = []
         loadData()
       } else {
         ElMessage.error(res.msg || '批量删除失败')
@@ -554,23 +484,37 @@ const handleBatchDelete = () => {
   })
 }
 
-const handleSubmit = async () => {
-  if (!petFormRef.value) return
-  await petFormRef.value.validate(async (valid) => {
-    if (valid) {
-      // 计算健康状态总值
-      petForm.healthStatus = selectedHealthStatus.value.reduce((acc, cur) => acc | cur, 0)
+const handleStatusChange = async (row) => {
+  try {
+    const res = await petServiceApi.updateServiceStatus(row.id, row.status)
+    if (res.code === 200) {
+      ElMessage.success('状态更新成功')
+    } else {
+      // 恢复原状态
+      row.status = row.status === 1 ? 0 : 1
+      ElMessage.error(res.msg || '状态更新失败')
+    }
+  } catch (error) {
+    row.status = row.status === 1 ? 0 : 1
+    console.error(error)
+    ElMessage.error('状态更新失败')
+  }
+}
 
+const handleSubmit = async () => {
+  if (!serviceFormRef.value) return
+  await serviceFormRef.value.validate(async (valid) => {
+    if (valid) {
       try {
         let res
-        if (petForm.id) {
-          res = await petApi.updatePet(petForm)
+        if (serviceForm.id) {
+          res = await petServiceApi.updateService(serviceForm)
         } else {
-          res = await petApi.addPet(petForm)
+          res = await petServiceApi.addService(serviceForm)
         }
 
         if (res.code === 200) {
-          ElMessage.success(petForm.id ? '修改成功' : '新增成功')
+          ElMessage.success(serviceForm.id ? '修改成功' : '新增成功')
           dialogVisible.value = false
           loadData()
         } else {
@@ -584,21 +528,17 @@ const handleSubmit = async () => {
 }
 
 const resetForm = () => {
-  petForm.id = undefined
-  petForm.name = ''
-  petForm.image = ''
-  petForm.type = 1
-  petForm.breed = ''
-  petForm.age = 0
-  petForm.gender = 1
-  petForm.healthStatus = 0
-  petForm.description = ''
-  petForm.source = 2
-  petForm.status = 2
-  petForm.ownerId = null
-  selectedHealthStatus.value = []
-  if (petFormRef.value) {
-    petFormRef.value.clearValidate()
+  serviceForm.id = undefined
+  serviceForm.name = ''
+  serviceForm.type = 1
+  serviceForm.price = 0
+  serviceForm.duration = null
+  serviceForm.description = ''
+  serviceForm.imageUrl = ''
+  serviceForm.sort = 0
+  serviceForm.status = 1
+  if (serviceFormRef.value) {
+    serviceFormRef.value.clearValidate()
   }
 }
 
@@ -620,12 +560,9 @@ const loadData = async () => {
       pageSize: pageSize.value,
       name: searchForm.name || undefined,
       type: searchForm.type,
-      breed: searchForm.breed || undefined,
-      status: searchForm.status,
-      source: searchForm.source,
-      gender: searchForm.gender
+      status: searchForm.status
     }
-    const res = await petApi.getPetPage(params)
+    const res = await petServiceApi.getServicePage(params)
     if (res.code === 200) {
       tableData.value = res.data.records
       total.value = parseInt(res.data.total)
@@ -646,7 +583,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.pets-container {
+.service-container {
   display: flex;
   flex-direction: column;
   gap: 20px;
@@ -666,6 +603,26 @@ onMounted(() => {
   margin-top: 20px;
   display: flex;
   justify-content: flex-end;
+}
+
+.price {
+  color: #f56c6c;
+  font-weight: bold;
+}
+
+.no-image {
+  color: #909399;
+  font-size: 12px;
+}
+
+.image-slot {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 60px;
+  height: 60px;
+  background: #f5f7fa;
+  color: #909399;
 }
 
 .avatar-uploader .el-upload {

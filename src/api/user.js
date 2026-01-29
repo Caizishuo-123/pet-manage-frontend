@@ -39,3 +39,16 @@ export function toggleUserRole(id, role) {
     params: { id, role }
   })
 }
+
+/**
+ * 更新用户信息（角色、地址）
+ * @param {Object} data - 用户信息
+ * @param {number} data.id - 用户ID
+ * @param {number} [data.role] - 角色值
+ * @param {string} [data.address] - 默认地址
+ * @returns {Promise}
+ */
+export function updateUserInfo(data) {
+  return request.put('/admin/user/update', data)
+}
+

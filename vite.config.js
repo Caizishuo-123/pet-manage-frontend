@@ -17,7 +17,7 @@ export default defineConfig({
         target: 'http://localhost:8081',
         changeOrigin: true
       },
-      '/common': {
+      '/cos': {
         target: 'http://localhost:8081',
         changeOrigin: true
       },

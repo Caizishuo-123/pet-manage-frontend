@@ -1,6 +1,28 @@
 import axios from 'axios'
 import router from '@/router'
 
+// COS 存储桶域名
+export const COS_BASE_URL = 'https://cthulhu-1400035022.cos.ap-guangzhou.myqcloud.com'
+
+/**
+ * 获取 COS 图片完整 URL
+ * @param {string} path - 相对路径，如 upload/pet/uuid.jpg
+ * @returns {string} 完整的 COS URL
+ */
+export const getCosUrl = (path) => {
+  if (!path) return ''
+  // 如果已经是完整 URL，直接返回
+  if (path.startsWith('http://') || path.startsWith('https://')) {
+    return path
+  }
+  // 如果是本地路径（以 / 开头），也用 COS 域名拼接
+  if (path.startsWith('/')) {
+    return COS_BASE_URL + path
+  }
+  // 拼接 COS 域名
+  return `${COS_BASE_URL}/${path}`
+}
+
 const request = axios.create({
   // 使用 vite 代理，不需要 baseURL
   timeout: 10000
