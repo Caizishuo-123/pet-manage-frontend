@@ -9,8 +9,8 @@
       </template>
 
       <el-form :inline="true" :model="searchForm" class="search-form">
-        <el-form-item label="用户">
-          <el-input v-model="searchForm.username" placeholder="请输入用户名" clearable style="width: 150px" disabled />
+        <el-form-item label="关键词">
+          <el-input v-model="searchForm.keyword" placeholder="备注内容" clearable style="width: 150px" />
         </el-form-item>
         <el-form-item label="服务">
           <el-select v-model="searchForm.serviceId" placeholder="请选择服务" clearable style="width: 150px">
@@ -22,6 +22,18 @@
             <el-option v-for="(label, value) in appointmentStatusMap" :key="value" :label="label"
               :value="Number(value)" />
           </el-select>
+        </el-form-item>
+        <el-form-item label="预约时间">
+          <el-date-picker
+            v-model="searchForm.timeRange"
+            type="datetimerange"
+            range-separator="至"
+            start-placeholder="开始时间"
+            end-placeholder="结束时间"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            clearable
+            style="width: 320px"
+          />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
@@ -187,9 +199,10 @@ const pageSize = ref(10)
 const total = ref(0)
 
 const searchForm = reactive({
-  username: '',
+  keyword: '',
   serviceId: undefined,
-  status: undefined
+  status: undefined,
+  timeRange: []
 })
 
 // 服务列表（下拉选择用）
@@ -267,9 +280,10 @@ const handleSearch = () => {
 }
 
 const resetSearch = () => {
-  searchForm.username = ''
+  searchForm.keyword = ''
   searchForm.serviceId = undefined
   searchForm.status = undefined
+  searchForm.timeRange = []
   currentPage.value = 1
   loadData()
 }
@@ -351,11 +365,15 @@ const handleCurrentChange = (val) => {
 const loadData = async () => {
   loading.value = true
   try {
+    const [startTime, endTime] = searchForm.timeRange || []
     const params = {
       page: currentPage.value,
       pageSize: pageSize.value,
       serviceId: searchForm.serviceId,
-      status: searchForm.status
+      status: searchForm.status,
+      keyword: searchForm.keyword || undefined,
+      startTime: startTime || undefined,
+      endTime: endTime || undefined
     }
     const res = await appointmentApi.getAppointmentPage(params)
     if (res.code === 200) {

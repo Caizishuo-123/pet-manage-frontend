@@ -19,10 +19,18 @@
             <el-form-item label="标题">
               <el-input v-model="postSearchForm.title" placeholder="请输入标题" clearable style="width: 150px" />
             </el-form-item>
+            <el-form-item label="关键词">
+              <el-input v-model="postSearchForm.keyword" placeholder="标题/内容" clearable style="width: 180px" />
+            </el-form-item>
             <el-form-item label="类型">
               <el-select v-model="postSearchForm.type" placeholder="请选择类型" clearable style="width: 120px">
                 <el-option label="普通帖子" :value="1" />
                 <el-option label="公告" :value="2" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="分类">
+              <el-select v-model="postSearchForm.category" placeholder="请选择分类" clearable style="width: 120px">
+                <el-option v-for="(label, value) in postCategoryMap" :key="value" :label="label" :value="Number(value)" />
               </el-select>
             </el-form-item>
             <el-form-item label="状态">
@@ -30,6 +38,18 @@
                 <el-option label="正常" :value="1" />
                 <el-option label="屏蔽" :value="0" />
               </el-select>
+            </el-form-item>
+            <el-form-item label="创建时间">
+              <el-date-picker
+                v-model="postSearchForm.timeRange"
+                type="datetimerange"
+                range-separator="至"
+                start-placeholder="开始时间"
+                end-placeholder="结束时间"
+                value-format="YYYY-MM-DD HH:mm:ss"
+                clearable
+                style="width: 320px"
+              />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" @click="handlePostSearch">
@@ -54,6 +74,14 @@
               <template #default="scope">
                 <el-tag :type="scope.row.type === 2 ? 'danger' : ''">
                   {{ postTypeMap[scope.row.type] }}
+                </el-tag>
+              </template>
+            </el-table-column>
+
+            <el-table-column prop="category" label="分类" width="120" align="center">
+              <template #default="scope">
+                <el-tag effect="plain">
+                  {{ postCategoryMap[scope.row.category] || '其他' }}
                 </el-tag>
               </template>
             </el-table-column>
@@ -131,11 +159,26 @@
               <el-input v-model="commentSearchForm.postId" placeholder="请输入帖子ID" clearable style="width: 120px"
                 type="number" />
             </el-form-item>
+            <el-form-item label="关键词">
+              <el-input v-model="commentSearchForm.keyword" placeholder="评论内容" clearable style="width: 180px" />
+            </el-form-item>
             <el-form-item label="状态">
               <el-select v-model="commentSearchForm.status" placeholder="请选择状态" clearable style="width: 120px">
                 <el-option label="正常" :value="1" />
                 <el-option label="屏蔽" :value="0" />
               </el-select>
+            </el-form-item>
+            <el-form-item label="创建时间">
+              <el-date-picker
+                v-model="commentSearchForm.timeRange"
+                type="datetimerange"
+                range-separator="至"
+                start-placeholder="开始时间"
+                end-placeholder="结束时间"
+                value-format="YYYY-MM-DD HH:mm:ss"
+                clearable
+                style="width: 320px"
+              />
             </el-form-item>
             <el-form-item>
               <el-button type="primary" @click="handleCommentSearch">
@@ -204,6 +247,11 @@
         <el-form-item label="公告标题" prop="title">
           <el-input v-model="postForm.title" placeholder="请输入公告标题" />
         </el-form-item>
+        <el-form-item label="公告分类" prop="category">
+          <el-select v-model="postForm.category" placeholder="请选择分类" style="width: 100%">
+            <el-option v-for="(label, value) in postCategoryMap" :key="value" :label="label" :value="Number(value)" />
+          </el-select>
+        </el-form-item>
         <el-form-item label="公告内容" prop="content">
           <el-input v-model="postForm.content" type="textarea" :rows="5" placeholder="请输入公告内容" />
         </el-form-item>
@@ -233,6 +281,9 @@
         <el-descriptions-item label="帖子ID">{{ viewPost.id }}</el-descriptions-item>
         <el-descriptions-item label="帖子类型">
           <el-tag :type="viewPost.type === 2 ? 'danger' : ''">{{ postTypeMap[viewPost.type] }}</el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item label="帖子分类">
+          <el-tag effect="plain">{{ postCategoryMap[viewPost.category] || '其他' }}</el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="发帖用户">{{ viewPost.username }}</el-descriptions-item>
         <el-descriptions-item label="点赞数">
@@ -313,13 +364,24 @@ const postTableData = ref([])
 
 const postSearchForm = reactive({
   title: '',
+  keyword: '',
   type: undefined,
-  status: undefined
+  category: undefined,
+  status: undefined,
+  timeRange: []
 })
 
 const postTypeMap = {
   1: '普通帖子',
   2: '公告'
+}
+
+const postCategoryMap = {
+  1: '分享',
+  2: '求助',
+  3: '科普',
+  4: '讨论',
+  5: '其他'
 }
 
 const handleTabChange = (tab) => {
@@ -337,8 +399,11 @@ const handlePostSearch = () => {
 
 const resetPostSearch = () => {
   postSearchForm.title = ''
+  postSearchForm.keyword = ''
   postSearchForm.type = undefined
+  postSearchForm.category = undefined
   postSearchForm.status = undefined
+  postSearchForm.timeRange = []
   postCurrentPage.value = 1
   loadPostData()
 }
@@ -356,12 +421,17 @@ const handlePostCurrentChange = (val) => {
 const loadPostData = async () => {
   postLoading.value = true
   try {
+    const [startTime, endTime] = postSearchForm.timeRange || []
     const params = {
       page: postCurrentPage.value,
       pageSize: postPageSize.value,
       title: postSearchForm.title || undefined,
+      keyword: postSearchForm.keyword || undefined,
       type: postSearchForm.type,
-      status: postSearchForm.status
+      category: postSearchForm.category,
+      status: postSearchForm.status,
+      startTime: startTime || undefined,
+      endTime: endTime || undefined
     }
     const res = await postApi.getPostPage(params)
     if (res.code === 200) {
@@ -384,10 +454,12 @@ const postFormRef = ref(null)
 const postForm = reactive({
   title: '',
   content: '',
-  imageUrl: ''
+  imageUrl: '',
+  category: 1
 })
 const postRules = {
   title: [{ required: true, message: '请输入公告标题', trigger: 'blur' }],
+  category: [{ required: true, message: '请选择分类', trigger: 'change' }],
   content: [{ required: true, message: '请输入公告内容', trigger: 'blur' }]
 }
 
@@ -400,6 +472,7 @@ const resetPostForm = () => {
   postForm.title = ''
   postForm.content = ''
   postForm.imageUrl = ''
+  postForm.category = 1
   if (postFormRef.value) {
     postFormRef.value.clearValidate()
   }
@@ -492,7 +565,8 @@ const handleSubmitPost = async () => {
           title: postForm.title,
           content: postForm.content,
           imageUrl: postForm.imageUrl || null,
-          type: 2 // 公告
+          type: 2, // 公告
+          category: postForm.category
         })
         if (res.code === 200) {
           ElMessage.success('发布成功')
@@ -614,7 +688,9 @@ const commentTableData = ref([])
 
 const commentSearchForm = reactive({
   postId: '',
-  status: undefined
+  status: undefined,
+  keyword: '',
+  timeRange: []
 })
 
 const handleCommentSearch = () => {
@@ -625,6 +701,8 @@ const handleCommentSearch = () => {
 const resetCommentSearch = () => {
   commentSearchForm.postId = ''
   commentSearchForm.status = undefined
+  commentSearchForm.keyword = ''
+  commentSearchForm.timeRange = []
   commentCurrentPage.value = 1
   loadCommentData()
 }
@@ -642,11 +720,15 @@ const handleCommentCurrentChange = (val) => {
 const loadCommentData = async () => {
   commentLoading.value = true
   try {
+    const [startTime, endTime] = commentSearchForm.timeRange || []
     const params = {
       page: commentCurrentPage.value,
       pageSize: commentPageSize.value,
       postId: commentSearchForm.postId || undefined,
-      status: commentSearchForm.status
+      status: commentSearchForm.status,
+      keyword: commentSearchForm.keyword || undefined,
+      startTime: startTime || undefined,
+      endTime: endTime || undefined
     }
     const res = await commentApi.getCommentPage(params)
     if (res.code === 200) {

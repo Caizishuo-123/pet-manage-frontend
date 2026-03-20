@@ -18,6 +18,7 @@ import * as ordersApi from './orders'
 import * as adoptionApi from './adoption'
 import * as postApi from './post'
 import * as commentApi from './comment'
+import * as dashboardApi from './dashboard'
 
 export {
   authApi,
@@ -28,6 +29,7 @@ export {
   ordersApi,
   adoptionApi,
   postApi,
-  commentApi
+  commentApi,
+  dashboardApi
 }
 

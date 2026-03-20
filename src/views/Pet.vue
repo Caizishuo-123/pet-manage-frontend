@@ -33,6 +33,9 @@
         <el-form-item label="品种">
           <el-input v-model="searchForm.breed" placeholder="请输入品种" clearable style="width: 150px" />
         </el-form-item>
+        <el-form-item label="关键词">
+          <el-input v-model="searchForm.keyword" placeholder="名称/品种/描述" clearable style="width: 180px" />
+        </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="searchForm.status" placeholder="请选择状态" clearable style="width: 120px">
             <el-option v-for="(label, value) in petStatusMap" :key="value" :label="label" :value="Number(value)" />
@@ -42,6 +45,18 @@
           <el-select v-model="searchForm.source" placeholder="请选择来源" clearable style="width: 120px">
             <el-option v-for="(label, value) in petSourceMap" :key="value" :label="label" :value="Number(value)" />
           </el-select>
+        </el-form-item>
+        <el-form-item label="创建时间">
+          <el-date-picker
+            v-model="searchForm.timeRange"
+            type="datetimerange"
+            range-separator="至"
+            start-placeholder="开始时间"
+            end-placeholder="结束时间"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            clearable
+            style="width: 320px"
+          />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
@@ -279,9 +294,11 @@ const searchForm = reactive({
   name: '',
   type: undefined,
   breed: '',
+  keyword: '',
   status: undefined,
   source: undefined,
-  gender: undefined
+  gender: undefined,
+  timeRange: []
 })
 
 // 字典映射
@@ -473,9 +490,11 @@ const resetSearch = () => {
   searchForm.name = ''
   searchForm.type = undefined
   searchForm.breed = ''
+  searchForm.keyword = ''
   searchForm.status = undefined
   searchForm.source = undefined
   searchForm.gender = undefined
+  searchForm.timeRange = []
   currentPage.value = 1
   loadData()
 }
@@ -615,15 +634,19 @@ const handleCurrentChange = (val) => {
 const loadData = async () => {
   loading.value = true
   try {
+    const [startTime, endTime] = searchForm.timeRange || []
     const params = {
       page: currentPage.value,
       pageSize: pageSize.value,
       name: searchForm.name || undefined,
       type: searchForm.type,
       breed: searchForm.breed || undefined,
+      keyword: searchForm.keyword || undefined,
       status: searchForm.status,
       source: searchForm.source,
-      gender: searchForm.gender
+      gender: searchForm.gender,
+      startTime: startTime || undefined,
+      endTime: endTime || undefined
     }
     const res = await petApi.getPetPage(params)
     if (res.code === 200) {

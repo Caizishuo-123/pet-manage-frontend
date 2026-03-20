@@ -12,11 +12,26 @@
         <el-form-item label="订单编号">
           <el-input v-model="searchForm.orderNo" placeholder="请输入订单编号" clearable style="width: 180px" />
         </el-form-item>
+        <el-form-item label="关键词">
+          <el-input v-model="searchForm.keyword" placeholder="订单号/备注" clearable style="width: 180px" />
+        </el-form-item>
         <el-form-item label="支付状态">
           <el-select v-model="searchForm.payStatus" placeholder="请选择状态" clearable style="width: 120px">
             <el-option label="未支付" :value="0" />
             <el-option label="已支付" :value="1" />
           </el-select>
+        </el-form-item>
+        <el-form-item label="创建时间">
+          <el-date-picker
+            v-model="searchForm.timeRange"
+            type="datetimerange"
+            range-separator="至"
+            start-placeholder="开始时间"
+            end-placeholder="结束时间"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            clearable
+            style="width: 320px"
+          />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
@@ -201,7 +216,9 @@ const total = ref(0)
 
 const searchForm = reactive({
   orderNo: '',
-  payStatus: undefined
+  keyword: '',
+  payStatus: undefined,
+  timeRange: []
 })
 
 // 状态映射
@@ -286,7 +303,9 @@ const handleSearch = () => {
 
 const resetSearch = () => {
   searchForm.orderNo = ''
+  searchForm.keyword = ''
   searchForm.payStatus = undefined
+  searchForm.timeRange = []
   currentPage.value = 1
   loadData()
 }
@@ -325,11 +344,15 @@ const handleCurrentChange = (val) => {
 const loadData = async () => {
   loading.value = true
   try {
+    const [startTime, endTime] = searchForm.timeRange || []
     const params = {
       page: currentPage.value,
       pageSize: pageSize.value,
       orderNo: searchForm.orderNo || undefined,
-      payStatus: searchForm.payStatus
+      keyword: searchForm.keyword || undefined,
+      payStatus: searchForm.payStatus,
+      startTime: startTime || undefined,
+      endTime: endTime || undefined
     }
     const res = await ordersApi.getOrderPage(params)
     if (res.code === 200) {

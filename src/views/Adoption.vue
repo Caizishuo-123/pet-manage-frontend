@@ -9,10 +9,25 @@
       </template>
 
       <el-form :inline="true" :model="searchForm" class="search-form">
+        <el-form-item label="关键词">
+          <el-input v-model="searchForm.keyword" placeholder="理由/地址/电话" clearable style="width: 180px" />
+        </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="searchForm.status" placeholder="请选择状态" clearable style="width: 120px">
             <el-option v-for="(label, value) in statusMap" :key="value" :label="label" :value="Number(value)" />
           </el-select>
+        </el-form-item>
+        <el-form-item label="申请时间">
+          <el-date-picker
+            v-model="searchForm.timeRange"
+            type="datetimerange"
+            range-separator="至"
+            start-placeholder="开始时间"
+            end-placeholder="结束时间"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            clearable
+            style="width: 320px"
+          />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
@@ -180,7 +195,9 @@ const pageSize = ref(10)
 const total = ref(0)
 
 const searchForm = reactive({
-  status: undefined
+  status: undefined,
+  keyword: '',
+  timeRange: []
 })
 
 // 状态映射
@@ -242,6 +259,8 @@ const handleSearch = () => {
 
 const resetSearch = () => {
   searchForm.status = undefined
+  searchForm.keyword = ''
+  searchForm.timeRange = []
   currentPage.value = 1
   loadData()
 }
@@ -345,10 +364,14 @@ const handleCurrentChange = (val) => {
 const loadData = async () => {
   loading.value = true
   try {
+    const [startTime, endTime] = searchForm.timeRange || []
     const params = {
       page: currentPage.value,
       pageSize: pageSize.value,
-      status: searchForm.status
+      status: searchForm.status,
+      keyword: searchForm.keyword || undefined,
+      startTime: startTime || undefined,
+      endTime: endTime || undefined
     }
     const res = await adoptionApi.getAdoptionPage(params)
     if (res.code === 200) {

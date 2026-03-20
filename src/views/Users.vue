@@ -18,6 +18,12 @@
         <el-form-item label="手机号">
           <el-input v-model="searchForm.phone" placeholder="请输入手机号" clearable style="width: 150px" />
         </el-form-item>
+        <el-form-item label="邮箱">
+          <el-input v-model="searchForm.email" placeholder="请输入邮箱" clearable style="width: 180px" />
+        </el-form-item>
+        <el-form-item label="关键词">
+          <el-input v-model="searchForm.keyword" placeholder="用户名/手机号/邮箱" clearable style="width: 180px" />
+        </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="searchForm.status" placeholder="请选择状态" clearable style="width: 120px">
             <el-option label="启用" :value="1" />
@@ -28,6 +34,18 @@
           <el-select v-model="searchForm.role" placeholder="请选择角色" clearable style="width: 120px">
             <el-option v-for="(name, value) in roleNameMap" :key="value" :label="name" :value="Number(value)" />
           </el-select>
+        </el-form-item>
+        <el-form-item label="创建时间">
+          <el-date-picker
+            v-model="searchForm.timeRange"
+            type="datetimerange"
+            range-separator="至"
+            start-placeholder="开始时间"
+            end-placeholder="结束时间"
+            value-format="YYYY-MM-DD HH:mm:ss"
+            clearable
+            style="width: 320px"
+          />
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
@@ -54,6 +72,7 @@
 
         <el-table-column prop="username" label="用户名" min-width="120" />
         <el-table-column prop="phone" label="手机号" width="120" />
+        <el-table-column prop="email" label="邮箱" min-width="180" />
 
         <el-table-column prop="role" label="角色" width="120" align="center">
           <template #default="scope">
@@ -115,6 +134,10 @@
 
         <el-form-item label="默认地址">
           <el-input v-model="userForm.address" placeholder="请输入默认收货地址" />
+        </el-form-item>
+
+        <el-form-item label="邮箱">
+          <el-input v-model="userForm.email" placeholder="请输入邮箱" />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -178,8 +201,11 @@ const searchForm = reactive({
   id: '',
   username: '',
   phone: '',
+  email: '',
+  keyword: '',
   status: undefined,
-  role: undefined
+  role: undefined,
+  timeRange: []
 })
 
 // 弹窗相关
@@ -188,7 +214,8 @@ const userForm = reactive({
   id: undefined,
   username: '',
   role: undefined,
-  address: ''
+  address: '',
+  email: ''
 })
 
 const dialogTitle = '修改角色'
@@ -227,8 +254,11 @@ const resetSearch = () => {
   searchForm.id = ''
   searchForm.username = ''
   searchForm.phone = ''
+  searchForm.email = ''
+  searchForm.keyword = ''
   searchForm.status = undefined
   searchForm.role = undefined
+  searchForm.timeRange = []
   currentPage.value = 1
   loadData()
 }
@@ -334,14 +364,19 @@ const handleStatusChange = async (row) => {
 const loadData = async () => {
   loading.value = true
   try {
+    const [startTime, endTime] = searchForm.timeRange || []
     const params = {
       page: currentPage.value,
       pageSize: pageSize.value,
       id: searchForm.id || undefined,
       username: searchForm.username || undefined,
       phone: searchForm.phone || undefined,
+      email: searchForm.email || undefined,
+      keyword: searchForm.keyword || undefined,
       role: searchForm.role !== undefined ? searchForm.role : undefined,
-      status: searchForm.status !== undefined ? searchForm.status : undefined
+      status: searchForm.status !== undefined ? searchForm.status : undefined,
+      startTime: startTime || undefined,
+      endTime: endTime || undefined
     }
     const res = await userApi.getUserPage(params)
     if (res.code === 200) {
