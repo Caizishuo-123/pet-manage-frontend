@@ -56,3 +56,14 @@ export function batchDeletePet(ids) {
   return request.delete('/admin/pet/delete/batch', { data: ids })
 }
 
+/**
+ * 审核送养宠物
+ * @param {number} id - 宠物ID
+ * @param {number} status - 审核结果状态：1-退回自养 2-通过上架 5-屏蔽
+ * @returns {Promise}
+ */
+export function auditPet(id, status) {
+  return request.put('/admin/pet/audit', null, {
+    params: { id, status }
+  })
+}

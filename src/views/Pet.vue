@@ -1,95 +1,118 @@
 <template>
   <div class="pets-container">
-    <!-- 数据列表 -->
     <el-card class="table-card" shadow="never">
       <template #header>
         <div class="card-header">
           <span>宠物列表</span>
           <div>
             <el-button type="danger" @click="handleBatchDelete" :disabled="selectedIds.length === 0">
-              <el-icon>
-                <Delete />
-              </el-icon> 批量删除
+              <el-icon><Delete /></el-icon> 批量删除
             </el-button>
             <el-button type="primary" @click="handleAdd">
-              <el-icon>
-                <Plus />
-              </el-icon> 新增宠物
+              <el-icon><Plus /></el-icon> 新增宠物
             </el-button>
           </div>
         </div>
       </template>
 
+      <!-- 搜索表单 -->
       <el-form :inline="true" :model="searchForm" class="search-form">
         <el-form-item label="名称">
-          <el-input v-model="searchForm.name" placeholder="请输入宠物名称" clearable style="width: 150px" />
+          <el-input v-model="searchForm.name" placeholder="请输入宠物名称" clearable style="width: 140px" />
         </el-form-item>
         <el-form-item label="类型">
-          <el-select v-model="searchForm.type" placeholder="请选择类型" clearable style="width: 120px">
+          <el-select v-model="searchForm.type" placeholder="请选择类型" clearable style="width: 100px">
             <el-option label="猫" :value="1" />
             <el-option label="狗" :value="2" />
           </el-select>
         </el-form-item>
         <el-form-item label="品种">
-          <el-input v-model="searchForm.breed" placeholder="请输入品种" clearable style="width: 150px" />
+          <el-input v-model="searchForm.breed" placeholder="请输入品种" clearable style="width: 130px" />
         </el-form-item>
         <el-form-item label="关键词">
-          <el-input v-model="searchForm.keyword" placeholder="名称/品种/描述" clearable style="width: 180px" />
+          <el-input v-model="searchForm.keyword" placeholder="名称/品种/描述" clearable style="width: 160px" />
         </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="searchForm.status" placeholder="请选择状态" clearable style="width: 120px">
-            <el-option v-for="(label, value) in petStatusMap" :key="value" :label="label" :value="Number(value)" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="来源">
-          <el-select v-model="searchForm.source" placeholder="请选择来源" clearable style="width: 120px">
-            <el-option v-for="(label, value) in petSourceMap" :key="value" :label="label" :value="Number(value)" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="创建时间">
-          <el-date-picker
-            v-model="searchForm.timeRange"
-            type="datetimerange"
-            range-separator="至"
-            start-placeholder="开始时间"
-            end-placeholder="结束时间"
-            value-format="YYYY-MM-DD HH:mm:ss"
-            clearable
-            style="width: 320px"
-          />
-        </el-form-item>
+
+        <template v-if="showAdvanced">
+          <el-form-item label="状态">
+            <el-select v-model="searchForm.status" placeholder="请选择状态" clearable style="width: 110px">
+              <el-option v-for="(label, value) in petStatusMap" :key="value" :label="label" :value="Number(value)" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="来源">
+            <el-select v-model="searchForm.source" placeholder="请选择来源" clearable style="width: 110px">
+              <el-option v-for="(label, value) in petSourceMap" :key="value" :label="label" :value="Number(value)" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="性别">
+            <el-select v-model="searchForm.gender" placeholder="请选择性别" clearable style="width: 100px">
+              <el-option label="公" :value="1" />
+              <el-option label="母" :value="2" />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="创建时间">
+            <el-date-picker
+              v-model="searchForm.timeRange"
+              type="datetimerange"
+              range-separator="至"
+              start-placeholder="开始"
+              end-placeholder="结束"
+              value-format="YYYY-MM-DD HH:mm:ss"
+              clearable
+              style="width: 300px"
+            />
+          </el-form-item>
+        </template>
+
         <el-form-item>
           <el-button type="primary" @click="handleSearch">
-            <el-icon>
-              <Search />
-            </el-icon> 查询
+            <el-icon><Search /></el-icon> 查询
           </el-button>
           <el-button @click="resetSearch">
-            <el-icon>
-              <Refresh />
-            </el-icon> 重置
+            <el-icon><Refresh /></el-icon> 重置
+          </el-button>
+          <el-button link type="primary" @click="showAdvanced = !showAdvanced">
+            {{ showAdvanced ? '收起筛选' : '更多筛选' }}
+            <el-icon><component :is="showAdvanced ? 'ArrowUp' : 'ArrowDown'" /></el-icon>
           </el-button>
         </el-form-item>
       </el-form>
 
-      <el-table :data="tableData" style="width: 100%" v-loading="loading" border
-        @selection-change="handleSelectionChange">
-        <el-table-column type="selection" width="55" align="center" />
-        <el-table-column prop="id" label="ID" width="80" align="center" />
+      <!-- 数据表格 -->
+      <el-table
+        :data="tableData" style="width: 100%" v-loading="loading" border
+        highlight-current-row
+        @selection-change="handleSelectionChange"
+      >
+        <el-table-column type="selection" width="50" align="center" />
+        <el-table-column prop="id" label="ID" width="70" align="center" />
 
-        <el-table-column prop="name" label="名称" min-width="120" />
+        <el-table-column label="图片" width="70" align="center">
+          <template #default="scope">
+            <el-avatar v-if="scope.row.image" :size="40" :src="getCosUrl(scope.row.image)" shape="square" />
+            <el-avatar v-else :size="40" shape="square">
+              <el-icon><Picture /></el-icon>
+            </el-avatar>
+          </template>
+        </el-table-column>
 
-        <el-table-column prop="type" label="类型" width="80" align="center">
+        <el-table-column prop="name" label="名称" min-width="110" />
+
+        <el-table-column prop="type" label="类型" width="70" align="center">
           <template #default="scope">
             <el-tag :type="scope.row.type === 1 ? 'warning' : 'success'">{{ petTypeMap[scope.row.type] }}</el-tag>
           </template>
         </el-table-column>
 
-        <el-table-column prop="breed" label="品种" width="120" />
+        <el-table-column prop="breed" label="品种" width="100" />
 
-        <el-table-column prop="age" label="年龄(月)" width="100" align="center" />
+        <el-table-column label="年龄" width="90" align="center">
+          <template #default="scope">
+            {{ formatAge(scope.row.age) }}
+          </template>
+        </el-table-column>
 
-        <el-table-column prop="gender" label="性别" width="80" align="center">
+        <el-table-column prop="gender" label="性别" width="70" align="center">
           <template #default="scope">
             <el-tag :type="scope.row.gender === 1 ? '' : 'danger'" effect="plain">
               {{ petGenderMap[scope.row.gender] }}
@@ -97,7 +120,19 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="status" label="状态" width="100" align="center">
+        <el-table-column label="健康状态" min-width="130">
+          <template #default="scope">
+            <template v-if="scope.row.healthStatus">
+              <el-tag v-for="item in getHealthTags(scope.row.healthStatus)" :key="item.value"
+                size="small" style="margin:1px" :type="getHealthTagType(item.value)">
+                {{ item.label }}
+              </el-tag>
+            </template>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
+
+        <el-table-column prop="status" label="状态" width="90" align="center">
           <template #default="scope">
             <el-tag :type="getPetStatusType(scope.row.status)">
               {{ petStatusMap[scope.row.status] }}
@@ -105,38 +140,33 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="source" label="来源" width="100" align="center">
+        <el-table-column label="领养费" width="100" align="center">
+          <template #default="scope">
+            <span>{{ formatAdoptionFee(scope.row.adoptionFee) }}</span>
+          </template>
+        </el-table-column>
+
+        <el-table-column prop="source" label="来源" width="90" align="center">
           <template #default="scope">
             {{ petSourceMap[scope.row.source] }}
           </template>
         </el-table-column>
 
-        <el-table-column prop="ownerId" label="所属用户ID" width="120" align="center">
+        <el-table-column prop="createTime" label="创建时间" width="170" />
+
+        <el-table-column label="操作" width="220" align="center" fixed="right">
           <template #default="scope">
-            {{ scope.row.ownerId || '-' }}
-          </template>
-        </el-table-column>
-
-        <el-table-column prop="createTime" label="创建时间" width="180" />
-
-        <el-table-column prop="updateTime" label="更新时间" width="180" />
-
-        <el-table-column label="操作" width="200" align="center" fixed="right">
-          <template #default="scope">
+            <el-button v-if="scope.row.status === 4" type="warning" link size="small" @click="openAuditDialog(scope.row)">
+              <el-icon><View /></el-icon> 审核
+            </el-button>
             <el-button type="success" link size="small" @click="handleView(scope.row)">
-              <el-icon>
-                <View />
-              </el-icon> 查看
+              <el-icon><View /></el-icon> 查看
             </el-button>
             <el-button type="primary" link size="small" @click="handleEdit(scope.row)">
-              <el-icon>
-                <Edit />
-              </el-icon> 编辑
+              <el-icon><Edit /></el-icon> 编辑
             </el-button>
             <el-button type="danger" link size="small" @click="handleDelete(scope.row)">
-              <el-icon>
-                <Delete />
-              </el-icon> 删除
+              <el-icon><Delete /></el-icon> 删除
             </el-button>
           </template>
         </el-table-column>
@@ -144,9 +174,12 @@
 
       <!-- 分页 -->
       <div class="pagination-container">
-        <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize" :page-sizes="[10, 20, 50, 100]"
-          layout="total, sizes, prev, pager, next, jumper" :total="total" @size-change="handleSizeChange"
-          @current-change="handleCurrentChange" />
+        <el-pagination
+          v-model:current-page="currentPage" v-model:page-size="pageSize"
+          :page-sizes="[10, 20, 50, 100]"
+          layout="total, sizes, prev, pager, next, jumper" :total="total"
+          @size-change="handleSizeChange" @current-change="handleCurrentChange"
+        />
       </div>
     </el-card>
 
@@ -155,13 +188,12 @@
       <el-form ref="petFormRef" :model="petForm" :rules="petRules" label-width="100px">
 
         <el-form-item label="宠物图片" prop="image">
-          <el-upload class="avatar-uploader" action="/cos/upload?type=pet" :show-file-list="false"
-            :on-success="handleAvatarSuccess" :before-upload="beforeAvatarUpload" @drop.prevent="handleDrop"
-            @dragover.prevent>
-            <img v-if="petForm.image" :src="getCosUrl(petForm.image)" class="avatar" />
-            <el-icon v-else class="avatar-uploader-icon">
-              <Plus />
-            </el-icon>
+          <el-upload ref="uploadRef" class="avatar-uploader" action="/cos/upload?type=pet"
+            :show-file-list="false" :on-success="handleAvatarSuccess"
+            :before-upload="beforeAvatarUpload" @drop.prevent="handleDrop" @dragover.prevent>
+            <el-image v-if="petForm.image" :src="getCosUrl(petForm.image)" class="avatar"
+              :preview-src-list="[getCosUrl(petForm.image)]" fit="cover" />
+            <el-icon v-else class="avatar-uploader-icon"><Plus /></el-icon>
           </el-upload>
         </el-form-item>
 
@@ -218,10 +250,15 @@
           </el-select>
         </el-form-item>
 
+        <el-form-item label="领养费用" prop="adoptionFee">
+          <el-input-number v-model="petForm.adoptionFee" :min="0" :precision="2" :step="10" style="width: 100%" />
+        </el-form-item>
+
         <el-form-item label="健康状态" prop="healthStatus">
           <el-checkbox-group v-model="selectedHealthStatus">
-            <el-checkbox v-for="(label, value) in healthStatusMap" :key="value" :label="Number(value)">{{ label
-            }}</el-checkbox>
+            <el-checkbox v-for="(label, value) in healthStatusMap" :key="value" :label="Number(value)">
+              {{ label }}
+            </el-checkbox>
           </el-checkbox-group>
         </el-form-item>
 
@@ -239,33 +276,84 @@
     </el-dialog>
 
     <!-- 查看详情弹窗 -->
-    <el-dialog title="宠物详情" v-model="viewDialogVisible" width="600px" destroy-on-close @close="viewPet = {}">
-      <el-descriptions :column="1" border>
+    <el-dialog title="宠物详情" v-model="viewDialogVisible" width="650px" destroy-on-close @close="viewPet = {}">
+      <el-descriptions :column="2" border>
+        <el-descriptions-item label="ID">{{ viewPet.id }}</el-descriptions-item>
         <el-descriptions-item label="名称">{{ viewPet.name }}</el-descriptions-item>
-        <el-descriptions-item label="健康状态">
-          <el-tag v-for="item in getViewPetHealthStatusTags(viewPet.healthStatus)" :key="item.value" class="mr-2"
-            style="margin-right: 5px;" :type="getHealthTagType(item.value)">
-            {{ item.label }}
-          </el-tag>
+        <el-descriptions-item label="类型">{{ petTypeMap[viewPet.type] || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="品种">{{ viewPet.breed || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="年龄">{{ formatAge(viewPet.age) }}</el-descriptions-item>
+        <el-descriptions-item label="性别">{{ petGenderMap[viewPet.gender] || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="状态">
+          <el-tag :type="getPetStatusType(viewPet.status)">{{ petStatusMap[viewPet.status] || '-' }}</el-tag>
         </el-descriptions-item>
-        <el-descriptions-item label="描述">{{ viewPet.description || '暂无描述' }}</el-descriptions-item>
-        <el-descriptions-item label="图片">
-          <el-image v-if="viewPet.image" :src="getCosUrl(viewPet.image)" style="width: 200px; height: 200px" fit="cover"
-            :preview-src-list="[getCosUrl(viewPet.image)]">
-            <template #error>
-              <div class="image-slot">
-                <el-icon>
-                  <IconPicture />
-                </el-icon>
-              </div>
-            </template>
-          </el-image>
-          <span v-else>暂无图片</span>
+        <el-descriptions-item label="来源">{{ petSourceMap[viewPet.source] || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="领养费用">{{ formatAdoptionFee(viewPet.adoptionFee) }}</el-descriptions-item>
+        <el-descriptions-item label="所属用户ID">{{ viewPet.ownerId || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="健康状态" :span="2">
+          <template v-if="viewPet.healthStatus">
+            <el-tag v-for="item in getHealthTags(viewPet.healthStatus)" :key="item.value"
+              style="margin-right:5px" :type="getHealthTagType(item.value)">
+              {{ item.label }}
+            </el-tag>
+          </template>
+          <span v-else>-</span>
         </el-descriptions-item>
+        <el-descriptions-item label="描述" :span="2">{{ viewPet.description || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="创建时间">{{ viewPet.createTime || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="更新时间">{{ viewPet.updateTime || '-' }}</el-descriptions-item>
       </el-descriptions>
+      <div v-if="viewPet.image" style="margin-top:16px">
+        <el-image :src="getCosUrl(viewPet.image)" style="width:200px;height:200px" fit="cover"
+          :preview-src-list="[getCosUrl(viewPet.image)]" />
+      </div>
+      <template #footer>
+        <el-button @click="viewDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 审核弹窗 -->
+    <el-dialog v-model="auditDialogVisible" title="审核送养宠物" width="520px" @close="resetAuditForm">
+      <el-form :model="auditForm" label-width="90px">
+        <el-form-item label="宠物名称">
+          <span>{{ auditTarget?.name || '-' }}</span>
+        </el-form-item>
+        <el-form-item label="品种">
+          <span>{{ auditTarget?.breed || '-' }}</span>
+        </el-form-item>
+        <el-form-item label="年龄">
+          <span>{{ formatAge(auditTarget?.age) }}</span>
+        </el-form-item>
+        <el-form-item label="当前状态">
+          <el-tag :type="getPetStatusType(auditTarget?.status)">{{ petStatusMap[auditTarget?.status] || '-' }}</el-tag>
+        </el-form-item>
+        <el-form-item label="健康状态">
+          <template v-if="auditTarget?.healthStatus">
+            <el-tag v-for="item in getHealthTags(auditTarget.healthStatus)" :key="item.value"
+              size="small" style="margin-right:3px" :type="getHealthTagType(item.value)">
+              {{ item.label }}
+            </el-tag>
+          </template>
+          <span v-else>-</span>
+        </el-form-item>
+        <el-form-item label="描述">
+          <span>{{ auditTarget?.description || '-' }}</span>
+        </el-form-item>
+        <el-form-item label="领养费用">
+          <span>{{ formatAdoptionFee(auditTarget?.adoptionFee) }}</span>
+        </el-form-item>
+        <el-form-item label="审核结果">
+          <el-radio-group v-model="auditForm.status">
+            <el-radio :label="2">通过上架</el-radio>
+            <el-radio :label="1">退回自养</el-radio>
+            <el-radio :label="5">直接删除</el-radio>
+          </el-radio-group>
+        </el-form-item>
+      </el-form>
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="viewDialogVisible = false">关闭</el-button>
+          <el-button @click="auditDialogVisible = false">取消</el-button>
+          <el-button type="primary" :loading="auditSubmitting" @click="handleAuditSubmit">确认审核</el-button>
         </span>
       </template>
     </el-dialog>
@@ -273,23 +361,31 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch, onUnmounted } from 'vue'
-import { Search, Refresh, Plus, Edit, Delete, View, Picture as IconPicture } from '@element-plus/icons-vue'
+import { ref, reactive, watch, onUnmounted } from 'vue'
+import {
+  Search, Refresh, Plus, Edit, Delete, View, Picture, ArrowUp, ArrowDown
+} from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { petApi } from '@/api'
-import request, { getCosUrl } from '@/utils/request'
+import { getCosUrl } from '@/utils/request'
+import { toStringOrEmpty, toNumberOrUndefined } from '@/utils/query'
+import { beforeAvatarUpload } from '@/utils/upload'
+import { useRoute } from 'vue-router'
 
 const loading = ref(false)
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+const route = useRoute()
+const showAdvanced = ref(false)
 
-// 批量删除相关
+// ---- 批量删除 ----
 const selectedIds = ref([])
 const handleSelectionChange = (selection) => {
   selectedIds.value = selection.map(item => item.id)
 }
 
+// ---- 搜索表单 ----
 const searchForm = reactive({
   name: '',
   type: undefined,
@@ -301,65 +397,61 @@ const searchForm = reactive({
   timeRange: []
 })
 
-// 字典映射
-const petTypeMap = {
-  1: '猫',
-  2: '狗'
-}
-
-const petGenderMap = {
-  1: '公',
-  2: '母'
-}
+// ---- 常量映射 ----
+const petTypeMap = { 1: '猫', 2: '狗' }
+const petGenderMap = { 1: '公', 2: '母' }
 
 const petStatusMap = {
   1: '用户拥有',
   2: '可领养',
-  3: '已领养'
+  3: '已锁定',
+  4: '待审核',
+  5: '已删除',
+  6: '送养完成'
 }
 
-const petSourceMap = {
-  1: '用户拥有',
-  2: '平台发布'
-}
+const petSourceMap = { 1: '用户拥有', 2: '平台发布' }
 
 const healthStatusMap = {
-  1: '疫苗',
-  2: '驱虫',
-  4: '绝育',
-  8: '健康',
-  16: '慢性病',
-  32: '观察中',
-  64: '特殊照顾'
+  1: '疫苗', 2: '驱虫', 4: '绝育', 8: '健康',
+  16: '慢性病', 32: '观察中', 64: '特殊照顾'
+}
+
+// ---- 工具函数 ----
+const formatAge = (months) => {
+  if (months == null) return '-'
+  if (months < 12) return `${months} 个月`
+  const years = Math.floor(months / 12)
+  const remain = months % 12
+  return remain > 0 ? `${years} 岁 ${remain} 个月` : `${years} 岁`
+}
+
+const formatAdoptionFee = (value) => {
+  const fee = Number(value || 0)
+  return fee <= 0 ? '免费' : `￥${fee.toFixed(2)}`
 }
 
 const getHealthTagType = (val) => {
-  if (val >= 64) return 'danger'   // 大于等于64 -> 红色
-  if (val >= 16) return 'warning'  // 大于等于16 -> 黄色
-  return ''                        // 其他 -> 默认蓝色（如果想变绿可以用 'success'）
+  if (val & 64) return 'danger'
+  if (val & (16 | 32)) return 'warning'
+  return ''
 }
 
 const getPetStatusType = (status) => {
   switch (status) {
-    case 1: return 'info';
-    case 2: return 'success';
-    case 3: return 'warning';
-    default: return '';
+    case 1: return 'info'
+    case 2: return 'success'
+    case 3: return 'warning'
+    case 4: return 'warning'
+    case 5: return 'info'
+    case 6: return 'info'
+    default: return ''
   }
 }
 
-// 查看详情相关
-const viewDialogVisible = ref(false)
-const viewPet = ref({})
-
-const handleView = (row) => {
-  viewPet.value = { ...row }
-  viewDialogVisible.value = true
-}
-
-const getViewPetHealthStatusTags = (status) => {
+const getHealthTags = (status) => {
   const tags = []
-  if (status === undefined || status === null) return tags
+  if (!status) return tags
   for (const [key, value] of Object.entries(healthStatusMap)) {
     const bit = Number(key)
     if ((status & bit) === bit) {
@@ -369,10 +461,20 @@ const getViewPetHealthStatusTags = (status) => {
   return tags
 }
 
-// 弹窗相关
+// ---- 查看详情 ----
+const viewDialogVisible = ref(false)
+const viewPet = ref({})
+
+const handleView = (row) => {
+  viewPet.value = { ...row }
+  viewDialogVisible.value = true
+}
+
+// ---- 新增/编辑弹窗 ----
 const dialogVisible = ref(false)
 const dialogTitle = ref('新增宠物')
 const petFormRef = ref(null)
+const uploadRef = ref(null)
 
 const petForm = reactive({
   id: undefined,
@@ -384,58 +486,51 @@ const petForm = reactive({
   gender: 1,
   healthStatus: 0,
   description: '',
-  source: 2, // 默认平台发布
-  status: 2, // 默认可领养
+  adoptionFee: 0,
+  source: 2,
+  status: 2,
   ownerId: null
 })
 
-// 用于处理 checkbox group 的数组
 const selectedHealthStatus = ref([])
 
-// 手动上传逻辑
-const customUpload = async (file) => {
-  if (!beforeAvatarUpload(file)) return
-
-  const formData = new FormData()
-  formData.append('file', file)
-
-  try {
-    const res = await request.post('/cos/upload?type=pet', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
-    handleAvatarSuccess(res)
-  } catch (error) {
-    ElMessage.error('上传失败')
-  }
+const petRules = {
+  name: [{ required: true, message: '请输入宠物名称', trigger: 'blur' }],
+  type: [{ required: true, message: '请选择类型', trigger: 'change' }],
+  status: [{ required: true, message: '请选择状态', trigger: 'change' }],
+  source: [{ required: true, message: '请选择来源', trigger: 'change' }],
+  adoptionFee: [{ required: true, message: '请输入领养费用', trigger: 'change' }]
 }
 
-// 粘贴处理
+// ---- 审核弹窗 ----
+const auditDialogVisible = ref(false)
+const auditSubmitting = ref(false)
+const auditTarget = ref(null)
+const auditForm = reactive({ status: 2 })
+
+// ---- 粘贴/拖拽上传 (统一走 el-upload) ----
 const handlePaste = (e) => {
   if (!dialogVisible.value) return
-  const items = e.clipboardData && e.clipboardData.items
-  if (items) {
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type.indexOf('image') !== -1) {
-        const file = items[i].getAsFile()
-        customUpload(file)
-        break // 只上传第一张
-      }
+  const items = e.clipboardData?.items
+  if (!items) return
+  for (let i = 0; i < items.length; i++) {
+    if (items[i].type.indexOf('image') !== -1) {
+      const file = items[i].getAsFile()
+      uploadRef.value?.handleStart(file)
+      uploadRef.value?.submit()
+      break
     }
   }
 }
 
-// 拖拽处理
 const handleDrop = (e) => {
-  const files = e.dataTransfer.files
-  if (files && files.length > 0) {
-    const file = files[0]
-    if (file.type.indexOf('image') !== -1) {
-      customUpload(file)
-    }
+  const files = e.dataTransfer?.files
+  if (files?.length > 0 && files[0].type.indexOf('image') !== -1) {
+    uploadRef.value?.handleStart(files[0])
+    uploadRef.value?.submit()
   }
 }
 
-// 监听 Dialog 打开状态，添加/移除粘贴事件
 watch(dialogVisible, (val) => {
   if (val) {
     window.addEventListener('paste', handlePaste)
@@ -448,8 +543,7 @@ onUnmounted(() => {
   window.removeEventListener('paste', handlePaste)
 })
 
-const handleAvatarSuccess = (response, uploadFile) => {
-  // 适配后端返回结构 Result<String>
+const handleAvatarSuccess = (response) => {
   if (response.code === 200) {
     petForm.image = response.data
     ElMessage.success('上传成功')
@@ -458,33 +552,8 @@ const handleAvatarSuccess = (response, uploadFile) => {
   }
 }
 
-const beforeAvatarUpload = (rawFile) => {
-  const isValidFormat = rawFile.type === 'image/jpeg' || rawFile.type === 'image/png' || rawFile.type === 'image/webp'
-  const isLt5M = rawFile.size / 1024 / 1024 < 5
-
-  if (!isValidFormat) {
-    ElMessage.error('上传图片只能是 JPG/PNG/WEBP 格式!')
-  }
-  if (!isLt5M) {
-    ElMessage.error('上传图片大小不能超过 5MB!')
-  }
-  return isValidFormat && isLt5M
-}
-
-const petRules = {
-  name: [{ required: true, message: '请输入宠物名称', trigger: 'blur' }],
-  type: [{ required: true, message: '请选择类型', trigger: 'change' }],
-  status: [{ required: true, message: '请选择状态', trigger: 'change' }],
-  source: [{ required: true, message: '请选择来源', trigger: 'change' }]
-}
-
-// 列表数据 mock
-const tableData = ref([])
-
-const handleSearch = () => {
-  currentPage.value = 1
-  loadData()
-}
+// ---- CRUD 操作 ----
+const handleSearch = () => { currentPage.value = 1; loadData() }
 
 const resetSearch = () => {
   searchForm.name = ''
@@ -508,96 +577,37 @@ const handleAdd = () => {
 const handleEdit = (row) => {
   resetForm()
   dialogTitle.value = '编辑宠物'
-
-  // 赋值
   Object.keys(petForm).forEach(key => {
-    if (row[key] !== undefined) {
-      petForm[key] = row[key]
-    }
+    if (row[key] !== undefined) petForm[key] = row[key]
   })
-
-  // 处理健康状态位运算转数组
   selectedHealthStatus.value = []
-  for (const [key, value] of Object.entries(healthStatusMap)) {
-    const bit = Number(key)
-    if ((row.healthStatus & bit) === bit) {
-      selectedHealthStatus.value.push(bit)
+  if (row.healthStatus) {
+    for (const [key] of Object.entries(healthStatusMap)) {
+      const bit = Number(key)
+      if ((row.healthStatus & bit) === bit) selectedHealthStatus.value.push(bit)
     }
   }
-
   dialogVisible.value = true
-}
-
-const handleDelete = (row) => {
-  ElMessageBox.confirm('确认删除该宠物吗?', '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    try {
-      const res = await petApi.deletePet(row.id)
-      if (res.code === 200) {
-        ElMessage.success('删除成功')
-        loadData()
-      } else {
-        ElMessage.error(res.msg || '删除失败')
-      }
-    } catch (error) {
-      console.error(error)
-      ElMessage.error('删除失败')
-    }
-  })
-}
-
-const handleBatchDelete = () => {
-  if (selectedIds.value.length === 0) return
-
-  ElMessageBox.confirm(`确认删除选中的 ${selectedIds.value.length} 个宠物吗?`, '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning'
-  }).then(async () => {
-    try {
-      const res = await petApi.batchDeletePet(selectedIds.value)
-      if (res.code === 200) {
-        ElMessage.success('批量删除成功')
-        selectedIds.value = [] // 清空选中
-        loadData()
-      } else {
-        ElMessage.error(res.msg || '批量删除失败')
-      }
-    } catch (error) {
-      console.error(error)
-      ElMessage.error('批量删除失败')
-    }
-  })
 }
 
 const handleSubmit = async () => {
   if (!petFormRef.value) return
   await petFormRef.value.validate(async (valid) => {
-    if (valid) {
-      // 计算健康状态总值
-      petForm.healthStatus = selectedHealthStatus.value.reduce((acc, cur) => acc | cur, 0)
-
-      try {
-        let res
-        if (petForm.id) {
-          res = await petApi.updatePet(petForm)
-        } else {
-          res = await petApi.addPet(petForm)
-        }
-
-        if (res.code === 200) {
-          ElMessage.success(petForm.id ? '修改成功' : '新增成功')
-          dialogVisible.value = false
-          loadData()
-        } else {
-          ElMessage.error(res.msg || '操作失败')
-        }
-      } catch (error) {
-        console.error(error)
+    if (!valid) return
+    petForm.healthStatus = selectedHealthStatus.value.reduce((acc, cur) => acc | cur, 0)
+    petForm.adoptionFee = Number(petForm.adoptionFee || 0)
+    try {
+      const res = petForm.id ? await petApi.updatePet(petForm) : await petApi.addPet(petForm)
+      if (res.code === 200) {
+        ElMessage.success(petForm.id ? '修改成功' : '新增成功')
+        dialogVisible.value = false
+        loadData()
+      } else {
+        ElMessage.error(res.msg || '操作失败')
       }
+    } catch (error) {
+      console.error(error)
+      ElMessage.error('操作失败')
     }
   })
 }
@@ -612,24 +622,96 @@ const resetForm = () => {
   petForm.gender = 1
   petForm.healthStatus = 0
   petForm.description = ''
+  petForm.adoptionFee = 0
   petForm.source = 2
   petForm.status = 2
   petForm.ownerId = null
   selectedHealthStatus.value = []
-  if (petFormRef.value) {
-    petFormRef.value.clearValidate()
+  petFormRef.value?.clearValidate()
+}
+
+const handleDelete = (row) => {
+  ElMessageBox.confirm(`确认删除宠物"${row.name}"吗？此操作不可恢复。`, '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    try {
+      const res = await petApi.deletePet(row.id)
+      if (res.code === 200) {
+        ElMessage.success('删除成功')
+        loadData()
+      } else {
+        ElMessage.error(res.msg || '删除失败')
+      }
+    } catch (error) {
+      console.error(error)
+      ElMessage.error(error?.response?.data?.msg || '删除失败')
+    }
+  }).catch(() => {})
+}
+
+const handleBatchDelete = () => {
+  if (selectedIds.value.length === 0) return
+  ElMessageBox.confirm(`确认删除选中的 ${selectedIds.value.length} 只宠物吗？此操作不可恢复。`, '提示', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    try {
+      const res = await petApi.batchDeletePet(selectedIds.value)
+      if (res.code === 200) {
+        ElMessage.success('批量删除成功')
+        selectedIds.value = []
+        loadData()
+      } else {
+        ElMessage.error(res.msg || '批量删除失败')
+      }
+    } catch (error) {
+      console.error(error)
+      ElMessage.error(error?.response?.data?.msg || '批量删除失败')
+    }
+  }).catch(() => {})
+}
+
+// ---- 审核 ----
+const openAuditDialog = (row) => {
+  auditTarget.value = { ...row }
+  auditForm.status = 2
+  auditDialogVisible.value = true
+}
+
+const resetAuditForm = () => {
+  auditTarget.value = null
+  auditForm.status = 2
+}
+
+const handleAuditSubmit = async () => {
+  if (!auditTarget.value?.id) return
+  auditSubmitting.value = true
+  try {
+    const res = await petApi.auditPet(auditTarget.value.id, auditForm.status)
+    if (res.code === 200) {
+      ElMessage.success('审核成功')
+      auditDialogVisible.value = false
+      loadData()
+    } else {
+      ElMessage.error(res.msg || '审核失败')
+    }
+  } catch (error) {
+    console.error(error)
+    ElMessage.error(error?.response?.data?.msg || '审核失败')
+  } finally {
+    auditSubmitting.value = false
   }
 }
 
-const handleSizeChange = (val) => {
-  pageSize.value = val
-  loadData()
-}
+// ---- 分页 ----
+const handleSizeChange = (val) => { pageSize.value = val; loadData() }
+const handleCurrentChange = (val) => { currentPage.value = val; loadData() }
 
-const handleCurrentChange = (val) => {
-  currentPage.value = val
-  loadData()
-}
+// ---- 数据加载 ----
+const tableData = ref([])
 
 const loadData = async () => {
   loading.value = true
@@ -663,9 +745,16 @@ const loadData = async () => {
   }
 }
 
-onMounted(() => {
-  loadData()
-})
+watch(
+  () => route.query,
+  () => {
+    searchForm.status = toNumberOrUndefined(route.query.status)
+    searchForm.timeRange = []
+    currentPage.value = 1
+    loadData()
+  },
+  { immediate: true }
+)
 </script>
 
 <style scoped>
@@ -683,6 +772,14 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.search-form {
+  margin-bottom: 8px;
+}
+
+.search-form .el-form-item {
+  margin-bottom: 8px;
 }
 
 .pagination-container {

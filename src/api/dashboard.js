@@ -12,3 +12,6 @@ export function getDashboardTrends(days = 7) {
   return request.get('/admin/dashboard/trends', { params: { days } })
 }
 
+export function getDashboardActivities(limit = 8) {
+  return request.get('/admin/dashboard/activities', { params: { limit } })
+}

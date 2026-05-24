@@ -31,7 +31,7 @@ export function toggleUserStatus(id) {
 /**
  * 修改用户角色
  * @param {number} id - 用户ID
- * @param {number} role - 角色值 (0: 普通用户, 1: 管理员)
+ * @param {number} role - 角色值 (1: 普通用户, 2: 管理员, 3: 超级管理员)
  * @returns {Promise}
  */
 export function toggleUserRole(id, role) {
